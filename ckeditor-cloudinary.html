@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>A Simple Page with CKEditor with Cloudinary integration</title>
+		<!-- JQuery script (CDN)-->
+		<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+        <!-- CKEditor script (CDN)-->
+		<script src="https://cdn.ckeditor.com/4.10.1/standard/ckeditor.js"></script>
+    </head>
+    <body>
+        <form>
+            <textarea name="editor1" id="editor1" rows="10" cols="80">
+                This is my textarea to be replaced with CKEditor.
+            </textarea>			
+        </form>
+		
+		<script type="text/javascript">
+
+		const cloudName = '<Your cloudName>';
+		const unsignedUploadPreset = '<Your unsignedUploadPreset>';
+					
+		$(function () {  // Shorthand for $(document).ready()
+			
+			// Create Ckeditor
+			var editor = CKEDITOR.replace('editor1', {
+				language: 'en', 
+				filebrowserImageUploadUrl: '/uploader/upload.php' // this is only for the upload tab to appear on dialog
+			});
+			
+			// Change request to upload to Cloudinary server 
+			editor.on( 'fileUploadRequest', function(evt) {
+
+				// Prepare request to Cloudinary
+				var url = 'https://api.cloudinary.com/v1_1/'+cloudName+'/upload';
+				var xhr = evt.data.fileLoader.xhr;
+				xhr.open('POST', url, true);
+				xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+				
+				// Fill all necessary fields for Cloudinary
+				var fd = new FormData();
+				fd.append('upload_preset', unsignedUploadPreset);
+				fd.append('folder', 'content/articles'); // Optional - place image at specific folder admin in Cloudinary
+				fd.append('tags', 'browser_upload'); // Optional - add tag for image admin in Cloudinary
+				fd.append('file', evt.data.fileLoader.file);
+				
+				// Send the request to Cloudinary server
+				xhr.send(fd);
+
+				// Prevented the default behavior.
+				evt.stop();
+			});
+
+			// Change response to handle Cloudinary response
+			editor.on( 'fileUploadResponse', function(evt) {
+
+				// Prevent the default response handler.
+				evt.stop();
+
+				// Get XHR and response.
+				var data = evt.data,
+				xhr = data.fileLoader.xhr,
+				response = JSON.parse(xhr.responseText);
+
+				// Transfer the response to Ckeditor format
+				data.uploaded = 1;
+				data.fileName = response.public_id + '.' + response.format;
+				data.url = response.secure_url;
+			});
+
+		});
+		</script>
+	
+    </body>
+</html>
+
